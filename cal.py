@@ -4,10 +4,10 @@ import numpy as np
 import holidays
 from pandas.tseries.offsets import CustomBusinessMonthEnd
 from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta, TH
+from dateutil.relativedelta import relativedelta, TH, MO
 
 start = '2022-01-01'
-end = '2023-01-01'
+end = '2022-12-01'
 
 def create_dates_df(startdate, enddate):
     dates = pd.date_range(start=startdate, end=enddate)
@@ -67,6 +67,13 @@ def get_blackfridays(df):
     blackfridays = [x + relativedelta(weekday=TH(+4)) + timedelta(days=1) for x in datelist]
     return blackfridays
 
+def add_specialdays(df):
+    blackfridays = get_blackfridays(df)
+    cybermondays = [bf + relativedelta(weekday=MO) for bf in blackfridays]
+    df['specialday'] = np.nan
+    df['specialday'] = np.where(df['date'].isin(blackfridays), 'Black Friday', df['specialday'])
+    df['specialday'] = np.where(df['date'].isin(cybermondays), 'Cyber Monday', df['specialday'])
+    return df
 
 def create_calendar(startdate, enddate):
     df = create_dates_df(startdate, enddate)
@@ -74,6 +81,7 @@ def create_calendar(startdate, enddate):
     df = add_holiday_cols(df)
     df = add_payday(df)
     df = add_paymonth(df)
+    df = add_specialdays(df)
     return df
 
 df = create_calendar(start, end)
