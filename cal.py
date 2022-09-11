@@ -6,7 +6,7 @@ from pandas.tseries.offsets import CustomBusinessMonthEnd
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta, TH, MO
 
-start = '2022-01-01'
+start = '2022-03-10'
 end = '2022-12-01'
 
 def create_dates_df(startdate, enddate):
@@ -56,7 +56,8 @@ def add_paymonth(df):
     df['paymonth'] = np.where(df['is-payday']==1, df['month']+1, np.nan)
     df['paymonth'] = df['paymonth'].ffill(axis=0)
     df['paymonth'] = np.where(np.isnan(df['paymonth']), df['month'], df['paymonth'])
-    df['paymonth'] = np.where(df['paymonth']==13, 1, df['paymonth'])                        
+    df['paymonth'] = np.where(df['paymonth']==13, 1, df['paymonth'])   
+    df['paymonth'] = df['paymonth'].astype(int)                     
     return df
 
 def get_blackfridays(df):
@@ -75,9 +76,17 @@ def add_specialdays(df):
     df['specialday'] = np.where(df['date'].isin(cybermondays), 'Cyber Monday', df['specialday'])
     return df
 
-def create_calendar(startdate, enddate):
+def add_financial_year(df, fy_start_month):
+    df['fy'] = np.where(df['month']<fy_start_month, df['year'] % 1000 - 1, df['year'] % 1000)
+    df['fy'] = df['fy'].astype(str) + (df['fy']+1).astype(str)
+    df['fy'] = df['fy'].astype(int)
+    return df
+    
+
+def create_calendar(startdate, enddate, fy_start_month=4):
     df = create_dates_df(startdate, enddate)
     df = add_columns(df)
+    df = add_financial_year(df, fy_start_month)
     df = add_holiday_cols(df)
     df = add_payday(df)
     df = add_paymonth(df)
