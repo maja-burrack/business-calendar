@@ -24,8 +24,7 @@ def add_standard_date_columns(df):
     df['day'] = df['date'].dt.day
     return df
 
-def add_holiday_cols(df, country='Denmark'):
-    """gets holidays"""
+def get_holiday_list(df, country='Denmark'):
     # get list of holidays in country
     startdate = np.min(df['date']).year
     enddate = np.max(df['date']).year
@@ -33,6 +32,11 @@ def add_holiday_cols(df, country='Denmark'):
     holidaylist = list()
     for holiday in getattr(holidays, country)(years=years).items():
         holidaylist.append(holiday)
+    return holidaylist
+
+def add_holiday_cols(df, country='Denmark'):
+    """gets holidays"""
+    holidaylist = get_holiday_list(df, country)
     
     # create to holiday columns from list of holidays
     holidays_df = pd.DataFrame(holidaylist, columns=['date', 'holiday'])
@@ -40,10 +44,10 @@ def add_holiday_cols(df, country='Denmark'):
     df = pd.merge(df, holidays_df, on=['date'], how='left')
     df['holiday'] = df['holiday'].fillna("")
     return df
-
-def add_payday_columns(df):
+    
+def add_payday_columns(df, country='Denmark'):
     # paydays
-    holidays = list(zip(*_get_holiday_list(df)))[0]
+    holidays = list(zip(*get_holiday_list(df, country)))[0]
     my_freq = CustomBusinessMonthEnd(holidays=holidays)
     paydays = pd.date_range(start, end, freq=my_freq)
     df['is-payday'] = np.where(df['date'].isin(paydays), 1, 0)
@@ -58,9 +62,9 @@ def add_payday_columns(df):
     df['payyear'] = np.where(df['paymonth']<df['month'], df['year']+1, df['year'])
     
     # transform days in paymonth to range from 0 to 1
-    df['dist_since_payday'] = df.groupby(['payyear', 'paymonth']).cumcount()
-    df['dist_max'] = df.groupby(['payyear', 'paymonth'])['dist_since_payday'].transform('max') 
-    df['dist_since_payday'] = df['dist_since_payday'] / df['dist_max']
+    df['dist_since_payday'] = df.groupby(['payyear', 'paymonth']).cumcount() # number the days starting on payday
+    df['dist_max'] = df.groupby(['payyear', 'paymonth'])['dist_since_payday'].transform('max') # max number of days in paymonth
+    df['dist_since_payday'] = df['dist_since_payday'] / df['dist_max'] # make number fall in 0 to 1
     df.drop('dist_max', axis=1, inplace=True)    
     return df
 
@@ -76,7 +80,7 @@ def add_specialdays(df):
     blackweekend = [bf + relativedelta(days=1) for bf in blackfridays] \
         + [bf + relativedelta(days=2) for bf in blackfridays]
     
-    # create and specialday column with blackfriday-related days    
+    # create a specialday column with blackfriday-related days    
     df['specialday'] = ""
     df['specialday'] = np.where(df['date'].isin(blackfridays), 'Black Friday', df['specialday'])
     df['specialday'] = np.where(df['date'].isin(cybermondays), 'Cyber Monday', df['specialday'])
@@ -85,6 +89,7 @@ def add_specialdays(df):
     # TODO: EASTER
     
     return df
+
 
 def add_financial_year(df, fy_start_month):
     df['fy'] = np.where(df['month']<fy_start_month, df['year'] % 1000 - 1, df['year'] % 1000)
@@ -108,6 +113,8 @@ def encode_cyclic(df, col, max_val):
     df[col + '_cos'] = np.cos(2 * np.pi * (df[col]-1)/max_val)
     return df
 
+# TODO: deal with days leading up to christmas for ML 
+
 def transform_for_ml(df):
     df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
     df['is-specialday'] = np.where(df['specialday']!="", 1, 0)
@@ -117,6 +124,8 @@ def transform_for_ml(df):
     df = encode_cyclic(df, 'paymonth', 12)
     df = encode_cyclic(df, 'weekday', 7)
     
+    # TODO: one hot encoding categorical features
+
     return df
 
 df = create_calendar(start, end)
