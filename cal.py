@@ -44,7 +44,7 @@ def add_holiday_cols(df, country='Denmark'):
     df = pd.merge(df, holidays_df, on=['date'], how='left')
     df['holiday'] = df['holiday'].fillna("")
     return df
-
+    
 def add_payday_columns(df, country='Denmark'):
     # paydays
     holidays = list(zip(*get_holiday_list(df, country)))[0]
@@ -125,7 +125,7 @@ def transform_for_ml(df):
     df = encode_cyclic(df, 'weekday', 7)
     
     # TODO: one hot encoding categorical features
-    
+
     return df
 
 df = create_calendar(start, end)
