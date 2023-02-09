@@ -6,9 +6,6 @@ from pandas.tseries.offsets import CustomBusinessMonthEnd
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta, TH, MO
 
-start = date(2022,3,10) #'2022-03-10'
-end = date(2023,1,3) #'2022-12-01'
-
 def create_dates_df(startdate, enddate):
     dates = pd.date_range(start=startdate, end=enddate)
     df = pd.DataFrame(dates)
@@ -189,23 +186,9 @@ def Get_Date_Features(startdate, enddate):
     
     return df
 
-# def transform_for_ml(df):
-#     df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
-#     df['is-specialday'] = np.where(df['specialday']!="", 1, 0)
-    
-#     # transform cyclical features
-#     df = encode_cyclic(df, 'month', 12)
-#     df = encode_cyclic(df, 'paymonth', 12)
-#     df = encode_cyclic(df, 'weekday', 7)
-    
-#     # TODO: one hot encoding categorical features
-#     categorical = ['month', 'weeknum', 'weekday', 'holiday', 'paymonth', '']
-#     return df
 
-# # df = create_calendar(start, end)
-# # df_transformed = transform_for_ml(df)
-# # df_transformed.tail(10)
-
-# df = create_calendar(start, end)
-df = Get_Date_Features(start, end)
-df.head()
+if __name__ == "__main__":
+    start = date(2022,3,10) #'2022-03-10'
+    end = date(2023,1,3) #'2022-12-01'
+    df = Get_Date_Features(start, end)
+    print(df.head())
