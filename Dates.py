@@ -68,11 +68,11 @@ def add_payday_columns(df, country='Denmark'):
     df.drop('dist_max', axis=1, inplace=True)    
     return df
 
-def add_specialdays(df):
+def add_specialdays(df, mindate, maxdate):
     # BLACKFRIDAYS
     # list of blackfridays
-    startdate = np.min(df['date']).year
-    enddate = np.max(df['date']).year
+    startdate = mindate.year
+    enddate = maxdate.year
     years = [*range(startdate, enddate +1, 1)]
     datelist = [date(year,11,1) for year in years]
     blackfridays = [x + relativedelta(weekday=TH(+4)) + timedelta(days=1) for x in datelist]
@@ -86,8 +86,34 @@ def add_specialdays(df):
     df['specialday'] = np.where(df['date'].isin(cybermondays), 'Cyber Monday', df['specialday'])
     df['specialday'] = np.where(df['date'].isin(blackweekend), 'Black Weekend', df['specialday'])
     
-    # TODO: EASTER
+    # easter saturdays
+    eastersundays = df[df['holiday']=='Påskedag']['date'].tolist()
+    easterdays = [d + relativedelta(days=1) for d in eastersundays]
+    df['specialday'] = np.where(df['date'].isin(easterdays), 'Påskeåbent', df['specialday'])
     
+    # christmas
+    christmasdays = df[(df.date.dt.month==12) & (df.date.dt.day==24)]['date'].tolist()
+    christmasdays = [pd.date_range(d, d.replace(day=31)) for d in christmasdays]
+    christmasdays = [d for sublist in christmasdays for d in sublist]
+    cond = df.date.isin(christmasdays) & (df['is-holiday']==0)
+    df['specialday'] = np.where(cond, 'Juleåbent', df['specialday'])
+    
+    bf = df.copy()
+    bf = bf[bf['specialday']=='Black Friday'].groupby('year')['date'].transform('min')
+    df['bf'] = bf
+    df['c'] = df['specialday'] =='Black Friday'
+    df['c'] = df[df.c==True].groupby('year')['date'].transform('max')
+    # blackfridays_df = pd.DataFrame(blackfridays, columns=['date'])
+    # blackfridays_df['date'] = pd.to_datetime(blackfridays_df['date'])
+    # for df in [blackfridays_df]:
+    #     df['year'] = df['date'].dt.year
+    #     df['month'] = df['date'].dt.month
+    #     df.set_index('year', 'month', inplace=True)
+    #     df.drop_duplicates(inplace=True)
+    #     df.rename({'date':'bf'}, inplace=True, axis=1)
+    # df = df.merge(blackfridays_df, on=['year', 'month'], how='left')
+    # df['christmas'] = df['date'].apply(lambda x: x.replace(day=24, month=24))
+    # df['diff'] = df['christmas'] - df['bf']
     return df
 
 
@@ -99,7 +125,7 @@ def add_financial_year(df, fy_start_month):
 
 
 def create_calendar(startdate, enddate, fy_start_month=4):
-    df = create_dates_df(startdate-relativedelta(days=32), enddate+relativedelta(days=32))
+    df = create_dates_df(startdate-relativedelta(months=13), enddate+relativedelta(months=13))
     df = add_standard_date_columns(df)
     df = add_financial_year(df, fy_start_month)
     df = add_holiday_cols(df)
@@ -114,6 +140,55 @@ def encode_cyclic(df, col, max_val):
     return df
 
 # TODO: deal with days leading up to christmas for ML 
+# def add_christmas_features(df):
+#     christmasdays = df[(df.date.dt.month==12) & (df.date.dt.day==24)]['date'].tolist()
+#     christmasdays = [pd.date_range(d, d.replace(day=31)) for d in christmasdays]
+#     christmasdays = [d for sublist in christmasdays for d in sublist]
+#     cond = df.date.isin(christmasdays) & (df['is-holiday']==0)
+#     df['specialday'] = np.where(cond, 'Juleåbent', df['specialday'])
+#     return df
+    
+def Get_Date_Features(startdate, enddate):
+    # add padding to dates
+    startdate = startdate-relativedelta(months=13)
+    enddate = enddate+relativedelta(months=13)
+    # get standard features
+    df = create_dates_df(startdate, enddate)
+    df = add_standard_date_columns(df)
+    # add holidays
+    df = add_holiday_cols(df)
+    df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
+    # add payday features
+    df = add_payday_columns(df)
+    # add special days
+    df = add_specialdays(df, startdate, enddate)
+    df['is-specialday'] = np.where(df['specialday']!="", 1, 0)
+    # remove date padding
+    df = df.loc[(df['date'].dt.date >= startdate) & (df['date'].dt.date <= enddate)]
+    
+    # transform cyclical features
+    df = encode_cyclic(df, 'month', 12)
+    df = encode_cyclic(df, 'paymonth', 12)
+    df = encode_cyclic(df, 'weekday', 7)
+    
+    # # add chistmas special days
+    # df = add_christmas_features(df)
+    
+    # encode other categorical features
+    to_encode = ['month', 'weeknum', 'weekday', 'holiday', 'paymonth', 'specialday']
+    for col in to_encode:
+        # Get one hot encoding of column
+        one_hot = pd.get_dummies(df[col])
+        one_hot = one_hot.add_prefix(col + '_')
+        # Drop column  as it is now encoded
+        df = df.drop(col,axis = 1)
+        # Join the encoded df
+        df = df.join(one_hot)
+        
+    # drop unnecessary features
+    df.drop(['quarter', 'day'], axis=1, inplace=True)
+    
+    return df
 
 def transform_for_ml(df):
     df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
@@ -125,9 +200,12 @@ def transform_for_ml(df):
     df = encode_cyclic(df, 'weekday', 7)
     
     # TODO: one hot encoding categorical features
-
+    categorical = ['month', 'weeknum', 'weekday', 'holiday', 'paymonth', '']
     return df
 
-df = create_calendar(start, end)
-df_transformed = transform_for_ml(df)
-df_transformed.tail(10)
+# df = create_calendar(start, end)
+# df_transformed = transform_for_ml(df)
+# df_transformed.tail(10)
+
+df = Get_Date_Features(start, end)
+df.head()
