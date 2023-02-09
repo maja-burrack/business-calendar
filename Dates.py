@@ -47,6 +47,8 @@ def add_payday_columns(df, country='Denmark'):
     # paydays
     holidays = list(zip(*get_holiday_list(df, country)))[0]
     my_freq = CustomBusinessMonthEnd(holidays=holidays)
+    start = df['date'].min()
+    end = df['date'].max()
     paydays = pd.date_range(start, end, freq=my_freq)
     df['is-payday'] = np.where(df['date'].isin(paydays), 1, 0)
 
