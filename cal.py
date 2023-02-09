@@ -141,7 +141,7 @@ def encode_cyclic(df, col, max_val):
     df[col + '_sin'] = np.sin(2 * np.pi * (df[col]-1)/max_val)
     df[col + '_cos'] = np.cos(2 * np.pi * (df[col]-1)/max_val)
     return df
-    
+
 def Get_Date_Features(startdate, enddate):
     # add padding to dates
     startdate = startdate-relativedelta(months=13)
@@ -156,15 +156,7 @@ def Get_Date_Features(startdate, enddate):
     df = add_payday_columns(df)
     # add special days
     df = add_specialdays(df, startdate, enddate)
-    df['is-specialday'] = np.where(df['specialday']!="", 1, 0)
-    # remove date padding
-    df = df.loc[(df['date'].dt.date >= startdate) & (df['date'].dt.date <= enddate)]
-    
-    # transform cyclical features
-    df = encode_cyclic(df, 'month', 12)
-    df = encode_cyclic(df, 'paymonth', 12)
-    df = encode_cyclic(df, 'weekday', 7)
-    
+
     # encode other categorical features
     to_encode = ['month', 'weeknum', 'weekday', 'holiday', 'paymonth', 'specialday']
     for col in to_encode:
@@ -183,7 +175,7 @@ def Get_Date_Features(startdate, enddate):
         
     # drop unnecessary features
     df.drop(['quarter', 'day'], axis=1, inplace=True)
-    
+
     return df
 
 
