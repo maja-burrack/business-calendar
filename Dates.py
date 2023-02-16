@@ -158,7 +158,7 @@ def Get_Date_Features(startdate, enddate):
     df = add_specialdays(df, startdate, enddate)
 
     # encode other categorical features
-    to_encode = ['month', 'weeknum', 'weekday', 'holiday', 'paymonth', 'specialday']
+    to_encode = ['month', 'weekday', 'holiday', 'paymonth', 'specialday']
     for col in to_encode:
         # Get one hot encoding of column
         one_hot = pd.get_dummies(df[col])
