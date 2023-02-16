@@ -43,7 +43,7 @@ def add_holiday_cols(df, country='Denmark'):
     df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
     return df
     
-def add_payday_columns(df, country='Denmark'):
+def add_payday_columns(df, start, end, country='Denmark'):
     # paydays
     holidays = list(zip(*get_holiday_list(df, country)))[0]
     my_freq = CustomBusinessMonthEnd(holidays=holidays)
@@ -132,7 +132,7 @@ def create_calendar(startdate, enddate, fy_start_month=4):
     df = add_standard_date_columns(df)
     df = add_financial_year(df, fy_start_month)
     df = add_holiday_cols(df)
-    df = add_payday_columns(df)
+    df = add_payday_columns(df, startdate, enddate)
     df = add_specialdays(df, startdate, enddate)
     df = df.loc[(df['date'].dt.date >= startdate) & (df['date'].dt.date <= enddate)]
     return df
@@ -153,7 +153,7 @@ def Get_Date_Features(startdate, enddate):
     df = add_holiday_cols(df)
     # df['is-holiday'] = np.where(df['holiday']!="", 1, 0)
     # add payday features
-    df = add_payday_columns(df)
+    df = add_payday_columns(df, startdate, enddate)
     # add special days
     df = add_specialdays(df, startdate, enddate)
 
