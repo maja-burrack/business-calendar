@@ -142,7 +142,7 @@ def encode_cyclic(df, col, max_val):
     df[col + '_cos'] = np.cos(2 * np.pi * (df[col]-1)/max_val)
     return df
 
-def Get_Date_Features(startdate, enddate):
+def Get_Date_Features(startdate, enddate, encode=True):
     # add padding to dates
     startdate = startdate-relativedelta(months=13)
     enddate = enddate+relativedelta(months=13)
@@ -156,22 +156,23 @@ def Get_Date_Features(startdate, enddate):
     df = add_payday_columns(df, startdate, enddate)
     # add special days
     df = add_specialdays(df, startdate, enddate)
-
-    # encode other categorical features
-    to_encode = ['month', 'weekday', 'paymonth', 'specialday']
-    for col in to_encode:
-        # Get one hot encoding of column
-        one_hot = pd.get_dummies(df[col])
-        one_hot = one_hot.add_prefix(col + '_')
-        # Drop column as it is now encoded
-        df = df.drop(col,axis = 1)
-        # Join the encoded df
-        df = df.join(one_hot)
-        # drop empty encoded column
-        try:
-            df.drop([col+'_'], axis=1, inplace=True)
-        except:
-            pass
+    
+    if encode:
+        # encode other categorical features
+        to_encode = ['month', 'weekday', 'paymonth', 'specialday']
+        for col in to_encode:
+            # Get one hot encoding of column
+            one_hot = pd.get_dummies(df[col])
+            one_hot = one_hot.add_prefix(col + '_')
+            # Drop column as it is now encoded
+            df = df.drop(col,axis = 1)
+            # Join the encoded df
+            df = df.join(one_hot)
+            # drop empty encoded column
+            try:
+                df.drop([col+'_'], axis=1, inplace=True)
+            except:
+                pass
         
     # drop unnecessary features
     df.drop(['quarter', 'day'], axis=1, inplace=True)
